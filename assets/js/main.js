@@ -2,7 +2,7 @@
 
 const CONFIG = {
   texts: {
-    name: "Sara",                                                // inserire nome ragazza, oppure lasciarlo vuoto
+    name: "AAAA",                                                // inserire nome ragazza, oppure lasciarlo vuoto
 
     titleTemplate: "{name}, will you be my Valentine?",          // titolo
     subtitle: "Choose wisely.",                                  // sottotitolo
