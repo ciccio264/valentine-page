@@ -2,26 +2,26 @@
 
 const CONFIG = {
   texts: {
-    title: "Will you be my Valentine?",
-    subtitle: "Choose wisely.",
-    hint: "“No” seems a bit shy 😈"
+    title: "Will you be my Valentine?",      // titolo
+    subtitle: "Choose wisely.",              // sottotitolo
+    hint: "“No” seems a bit shy 😈"          // messaggio al NO
   },
 
   yesGrowth: {
-    step: 0.12,
-    max: 2.6
+    step: 0.05,   // crescita YES
+    max: 2.2      // dimensione max YES
   },
 
   avoid: {
-    influenceRadius: 220,
-    dangerRadius: 115,
+    influenceRadius: 170,      // raggio di attivazione spostamento NO
+    dangerRadius: 90,          // distanza teleport NO
     edgePadding: 14,
-    minDistanceFromPointer: 170,
+    minDistanceFromPointer: 150,
     minGapFromYes: 14,
-    teleportCooldownMs: 150,
+    teleportCooldownMs: 180,
     teleportTries: 26,
-    maxVelocity: 18,
-    friction: 0.82
+    maxVelocity: 10,           // velocità NO
+    friction: 0.86             // più damping = movimento meno aggressivo
   },
 
   audio: {
@@ -44,6 +44,7 @@ const el = {
 
 const state = {
   running: true,
+  hintShown: false,
   lastPointer: { x: 0, y: 0, active: false },
   yesScale: 1,
   no: {
@@ -68,11 +69,13 @@ function applyTexts() {
   el.title.textContent = CONFIG.texts.title;
   el.subtitle.textContent = CONFIG.texts.subtitle;
   el.hint.textContent = CONFIG.texts.hint;
+  el.hint.hidden = true; // nascosta all'inizio
   updateYesScale();
 }
 
 function bindEvents() {
   el.stage.addEventListener("pointermove", onPointerMove, { passive: true });
+
   el.stage.addEventListener("pointerleave", () => {
     state.lastPointer.active = false;
   }, { passive: true });
@@ -118,6 +121,7 @@ function onPointerMove(event) {
   state.lastPointer = { ...p, active: true };
 
   const d = distance(p.x, p.y, state.no.x, state.no.y);
+
   if (d < CONFIG.avoid.dangerRadius) {
     teleportNoAwayFromPointer(p.x, p.y, false);
     handleNoEscape();
@@ -135,6 +139,7 @@ function onTouchStart(event) {
   const y = touch.clientY - stageRect.top;
 
   const d = distance(x, y, state.no.x, state.no.y);
+
   if (d < CONFIG.avoid.influenceRadius) {
     teleportNoAwayFromPointer(x, y, true);
     handleNoEscape();
@@ -172,6 +177,7 @@ function onYesClick() {
 
 function resetApp() {
   state.running = true;
+  state.hintShown = false;
   state.lastPointer.active = false;
   state.no.vx = 0;
   state.no.vy = 0;
@@ -180,6 +186,7 @@ function resetApp() {
   el.stage.classList.remove("is-hidden");
   el.result.hidden = true;
   el.resetBtn.hidden = true;
+  el.hint.hidden = true;
 
   resetYesScale();
   initPositions();
@@ -193,8 +200,15 @@ function resetApp() {
 }
 
 function handleNoEscape() {
+  revealHintOnce();
   growYes();
   pulseYes();
+}
+
+function revealHintOnce() {
+  if (state.hintShown) return;
+  state.hintShown = true;
+  el.hint.hidden = false;
 }
 
 function growYes() {
@@ -231,7 +245,11 @@ function stepAvoidancePhysics() {
 
   const p = state.lastPointer;
   const d = distance(p.x, p.y, state.no.x, state.no.y);
-  const influence = clamp((CONFIG.avoid.influenceRadius - d) / CONFIG.avoid.influenceRadius, 0, 1);
+  const influence = clamp(
+    (CONFIG.avoid.influenceRadius - d) / CONFIG.avoid.influenceRadius,
+    0,
+    1
+  );
 
   if (influence <= 0) {
     state.no.vx *= CONFIG.avoid.friction;
@@ -251,8 +269,16 @@ function stepAvoidancePhysics() {
   state.no.vx += ux * force;
   state.no.vy += uy * force;
 
-  state.no.vx = clamp(state.no.vx, -CONFIG.avoid.maxVelocity, CONFIG.avoid.maxVelocity);
-  state.no.vy = clamp(state.no.vy, -CONFIG.avoid.maxVelocity, CONFIG.avoid.maxVelocity);
+  state.no.vx = clamp(
+    state.no.vx,
+    -CONFIG.avoid.maxVelocity,
+    CONFIG.avoid.maxVelocity
+  );
+  state.no.vy = clamp(
+    state.no.vy,
+    -CONFIG.avoid.maxVelocity,
+    CONFIG.avoid.maxVelocity
+  );
 
   state.no.vx *= CONFIG.avoid.friction;
   state.no.vy *= CONFIG.avoid.friction;
@@ -275,7 +301,10 @@ function integrateNoMotion() {
   const noBox = buildNoBoxLocal(state.no.x, state.no.y);
 
   if (boxesOverlap(noBox, yesBox, CONFIG.avoid.minGapFromYes)) {
-    const p = state.lastPointer.active ? state.lastPointer : { x: state.no.x, y: state.no.y };
+    const p = state.lastPointer.active
+      ? state.lastPointer
+      : { x: state.no.x, y: state.no.y };
+
     teleportNoAwayFromPointer(p.x, p.y, true);
     handleNoEscape();
     return;
@@ -325,7 +354,12 @@ function teleportNoAwayFromPointer(px, py, force) {
   }
 
   if (!bestCandidate) {
-    bestCandidate = getFarthestCorner(px, py, { minX, maxX, minY, maxY }, yesBox);
+    bestCandidate = getFarthestCorner(
+      px,
+      py,
+      { minX, maxX, minY, maxY },
+      yesBox
+    );
   }
 
   state.no.lastTeleportAt = now;
