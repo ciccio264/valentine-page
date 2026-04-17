@@ -2,7 +2,7 @@
 
 const CONFIG = {
   texts: {
-    name: "Nirali", // <-- cambia qui
+    name: "Sara", // <-- cambia qui
 
     titleTemplate: "{name}, will you be my Valentine?",
     subtitle: "Choose wisely.",
